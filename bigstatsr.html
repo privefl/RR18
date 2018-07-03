@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>R package bigstatsr - Rencontres R 2018</title>
+    <meta charset="utf-8">
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+    <link href="libs/font-awesome/css/fontawesome-all.min.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide center middle inverse
+
+# The <i class="fab  fa-r-project "></i> package {bigstatsr}:&lt;br/&gt;memory- and computation-efficient tools&lt;br/&gt;for big matrices stored on disk
+
+## Florian Privé (@privefl)
+
+### Rencontres R 2018
+
+**Slides:** `https://privefl.github.io/RR18/bigstatsr.html`
+
+---
+
+class: center middle inverse
+
+# Motivation
+
+---
+
+## Analyze very large genotype matrices
+
+- previously: 15K x 280K, [celiac disease](https://doi.org/10.1038/ng.543) (~30GB)
+
+- currently: 500K x 500K, [UK Biobank](https://doi.org/10.1101/166298) (~2TB)
+ 
+&lt;img src="https://media.giphy.com/media/3o7bueyxGydy48Lwgo/giphy.gif" width="55%" style="display: block; margin: auto;" /&gt;
+
+.footnote[But I still want to use <i class="fab  fa-r-project "></i>..]
+
+---
+
+## The solution I found
+
+&lt;img src="memory-solution.svg" width="90%" style="display: block; margin: auto;" /&gt;
+
+.footnote[Format `FBM` is very similar to format `filebacked.big.matrix` from package {bigmemory} (details in [this vignette](https://privefl.github.io/bigstatsr/articles/bigstatsr-and-bigmemory.html)).]
+
+---
+
+class: center middle inverse
+
+# Simple accessors
+
+---
+
+## Similar accessor as R matrices
+
+
+```r
+X &lt;- FBM(2, 5, init = 1:10, backingfile = "test")
+```
+
+
+```r
+X$backingfile
+```
+
+```
+## [1] "/home/privef/Bureau/RR18/test.bk"
+```
+
+```r
+X[, 1]  ## ok
+```
+
+```
+## [1] 1 2
+```
+
+```r
+X[1, ]  ## bad
+```
+
+```
+## [1] 1 3 5 7 9
+```
+
+```r
+X[]     ## super bad
+```
+
+```
+##      [,1] [,2] [,3] [,4] [,5]
+## [1,]    1    3    5    7    9
+## [2,]    2    4    6    8   10
+```
+
+---
+
+## Similar accessor as R matrices
+
+
+```r
+colSums(X[])  ## super bad
+```
+
+```
+## [1]  3  7 11 15 19
+```
+
+&lt;/br&gt;
+
+&lt;img src="caution.jpg" width="70%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Split-(par)Apply-Combine Strategy
+
+### Apply standard R functions to big matrices (in parallel)
+
+&lt;img src="split-apply-combine.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+.footnote[Implemented in `big_apply()`.]
+
+---
+
+## Similar accessor as Rcpp matrices
+
+
+```cpp
+// [[Rcpp::depends(BH, bigstatsr)]]
+#include &lt;bigstatsr/BMAcc.h&gt;
+
+// [[Rcpp::export]]
+NumericVector big_colsums(Environment BM) {
+  
+  XPtr&lt;FBM&gt; xpBM = BM["address"]; 
+  BMAcc&lt;double&gt; macc(xpBM); 
+  
+* size_t n = macc.nrow();
+* size_t m = macc.ncol();
+  
+  NumericVector res(m);
+  
+  for (size_t j = 0; j &lt; m; j++) 
+    for (size_t i = 0; i &lt; n; i++)
+*     res[j] += macc(i, j);
+  
+  return res;
+}
+```
+
+---
+
+class: center middle inverse
+
+# Some examples 
+
+# from my work
+
+---
+
+## Partial Singular Value Decomposition
+
+15K `\(\times\)` 100K -- 10 first PCs -- 6 cores -- **1 min** (vs 2h in base R)
+
+&lt;/br&gt;
+
+&lt;img src="PC1-4.png" width="90%" style="display: block; margin: auto;" /&gt;
+
+.footnote[Implemented in `big_randomSVD()`, powered by R packages {RSpectra} and {Rcpp}.]
+
+---
+
+## Sparse linear models
+
+### Predicting complex diseases via penalized logistic regression
+
+15K `\(\times\)` 280K -- 6 cores -- **2 min**
+
+&lt;img src="density-scores.svg" width="75%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Multiple association testing
+
+### Which DNA mutations are associated with one disease?
+
+&lt;br&gt;
+
+&lt;img src="celiac-gwas-cut.png" width="85%" style="display: block; margin: auto;" /&gt;
+
+---
+
+class: center middle inverse
+
+# Conclusion
+
+---
+
+class: inverse, center, middle
+
+# I'm able  to run algorithms
+# on 100GB of data
+# in <i class="fab  fa-r-project "></i> on my computer 
+
+---
+
+## Advantages of using FBM objects
+
+&lt;br&gt;
+
+- you can apply algorithms on **data larger than your RAM**,
+
+- you can easily **parallelize** your algorithms because the data on disk is shared,
+
+- you write **more efficient algorithms** (you do less copies and think more about what you're doing),
+
+- you can use **different types of data**, for example, in my field, I’m storing my data with only 1 byte per element (rather than 8 bytes for a standard R matrix). See [the documentation of the FBM class](https://privefl.github.io/bigstatsr/reference/FBM-class.html) for details.
+
+
+---
+
+## R Packages
+
+&lt;br&gt;
+
+&lt;a href="https://doi.org/10.1093/bioinformatics/bty185" target="_blank"&gt;
+&lt;img src="bty185.png" width="70%" style="display: block; margin: auto;" /&gt;
+&lt;/a&gt;
+
+&lt;br&gt;
+
+- {bigstatsr}: to be used by any field of research
+
+- {bigsnpr}: algorithms specific to my field of research
+
+---
+
+## Contributors are welcomed!
+
+&lt;img src="cat-help.jpg" width="80%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Make sure to grab an hex sticker
+
+&lt;br&gt;
+
+&lt;img src="https://raw.githubusercontent.com/privefl/bigstatsr/master/bigstatsr.png" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+
+class: inverse, center, middle
+
+# Thanks!
+
+&lt;br/&gt;&lt;br/&gt;
+
+Presentation: https://privefl.github.io/RR18/bigstatsr.html
+
+Package's website: https://privefl.github.io/bigstatsr/
+
+DOI: [10.1093/bioinformatics/bty185](https://doi.org/10.1093/bioinformatics/bty185)
+
+&lt;br/&gt;
+
+<i class="fab  fa-twitter "></i> [privefl](https://twitter.com/privefl) &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; <i class="fab  fa-github "></i> [privefl](https://github.com/privefl) &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; <i class="fab  fa-stack-overflow "></i> [F. Privé](https://stackoverflow.com/users/6103040/f-priv%c3%a9)
+
+
+.footnote[Slides created via the R package [**xaringan**](https://github.com/yihui/xaringan).]
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+  }
+});
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
