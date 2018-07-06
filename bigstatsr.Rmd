@@ -35,7 +35,19 @@ class: title-slide center middle inverse
 
 class: center middle inverse
 
-# Motivation
+# Introduction & Motivation
+
+---
+
+## About
+
+I'm a PhD Student (2016-2019) in **Predictive Human Genetics** in Grenoble.
+
+$$\boxed{\Large{\text{Disease} \sim \text{DNA mutations} + \cdots}}$$
+
+```{r}
+knitr::include_graphics("https://r-in-grenoble.github.io/cover.jpg")
+```
 
 ---
 
@@ -159,6 +171,18 @@ knitr::include_graphics("PC1-4.png")
 
 ---
 
+## Multiple association testing
+
+### Which DNA mutations are associated with one disease?
+
+<br>
+
+```{r, out.width='90%'}
+knitr::include_graphics("celiac-gwas-cut.png")
+```
+
+---
+
 ## Sparse linear models
 
 ### Predicting complex diseases via penalized logistic regression
@@ -167,18 +191,6 @@ knitr::include_graphics("PC1-4.png")
 
 ```{r, out.width='75%'}
 knitr::include_graphics("density-scores.svg")
-```
-
----
-
-## Multiple association testing
-
-### Which DNA mutations are associated with one disease?
-
-<br>
-
-```{r, out.width='85%'}
-knitr::include_graphics("celiac-gwas-cut.png")
 ```
 
 ---
@@ -242,7 +254,7 @@ knitr::include_graphics("cat-help.jpg")
 
 <br>
 
-```{r, out.width='50%'}
+```{r, out.width='45%'}
 knitr::include_graphics("https://raw.githubusercontent.com/privefl/bigstatsr/master/bigstatsr.png")
 ```
 
